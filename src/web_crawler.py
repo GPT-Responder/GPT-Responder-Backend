@@ -1,10 +1,14 @@
 from bs4 import BeautifulSoup
+from readability import Document
 import requests
 import logging
 import colorlog
 
 
 def setup_logger(name, log_level=logging.DEBUG, stream_handler_level=logging.DEBUG):
+    """
+    Sets up the logger
+    """
     # Define log colors
     log_colors = {
         "DEBUG": "cyan",
@@ -41,13 +45,24 @@ def setup_logger(name, log_level=logging.DEBUG, stream_handler_level=logging.DEB
 
 
 def get_page(url):
-    # TODO: Set up exception handeling
-    logger.info(f"Requesting page: {url}")
-    page = requests.get(url)
-    doc = BeautifulSoup(page.text, "html.parser")
-    article = doc.article
+    """
+    Takes in a single URL and returns only relavent information from the page
+    """
+    try:
+        logger.info(f"Requesting site: {url}")
+        response = requests.get(url)
 
-    return article
+    except requests.HTTPError as http_err:
+        logger.error(f"HTTP error occurred: {http_err}")  # Python 3.6
+        return None
+
+    except Exception as err:
+        logger.error(f"Other error occurred: {err}")  # Python 3.6
+        return None
+
+    doc = Document(response.text)
+
+    return doc.summary()
 
 
 def start():
@@ -58,6 +73,8 @@ def start():
 
 if __name__ == "__main__":
     start()
-    page = get_page(
-        "https://www.stetson.edu/administration/information-technology/help-desk/"
-    )
+    # get_page(
+    #     "https://catalog.stetson.edu/undergraduate/arts-sciences/computer-science/cyber-security-bs/#text"
+    # )
+    # print("\n----------------------------------------------------\n")
+    get_page("https://www.stetson.edu/administration/information-technology/help-desk/")
