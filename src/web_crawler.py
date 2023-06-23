@@ -67,7 +67,8 @@ def get_page(url: str) -> Optional[str]:
 
     if doc:
         logger.info(f"Found text on {url}")
-        logger.debug(doc.summary)
+        # TODO: Should this be logged?
+        logger.debug(f"HTML from {url}:\n{doc.summary()}")
     else:
         logger.info(f"No text found on {url}")
 
@@ -79,7 +80,16 @@ def parse_html_for_vector_db(html: str) -> list[str]:
     Takes in HTML input and returns a list of strings spilit up to be used
     in a vector database.
     """
-    pass
+    logger.info(f"Parsing HTML")
+    soup = BeautifulSoup(html, "html.parser")
+    paragraphs = soup.find_all("p")
+
+    # Extract text from each <p> tag and add it to a list
+    p_list = [p.get_text() for p in paragraphs]
+    for pos, p in enumerate(p_list):
+        logger.debug(f"P tag {pos}: {p}")
+
+    return p_list
 
 
 def add_to_vector_db() -> None:
@@ -93,7 +103,8 @@ def start() -> None:
     global logger
 
     logger = setup_logger(__name__)
-    print(get_page("https://www.stetson.edu/other/about/history.php"))
+    page = get_page("https://www.stetson.edu/other/about/history.php")
+    page_info = parse_html_for_vector_db(page)
 
 
 if __name__ == "__main__":
