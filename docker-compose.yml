@@ -1,0 +1,31 @@
+version: '3.4'
+services:
+  weaviate:
+    volumes:
+      - /var/weaviate:/var/lib/weaviate
+    image: semitechnologies/weaviate:1.20.0
+    restart: on-failure:0
+    ports:
+     - "8080:8080"
+    environment:
+      QUERY_DEFAULTS_LIMIT: 20
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: "./data"
+      DEFAULT_VECTORIZER_MODULE: text2vec-transformers
+      ENABLE_MODULES: text2vec-transformers
+      TRANSFORMERS_INFERENCE_API: http://t2v-transformers:8080
+      CLUSTER_HOSTNAME: 'node1'
+
+      # Adding API support
+      AUTHENTICATION_APIKEY_ENABLED: 'true'
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'matthew-secret-key'
+      AUTHENTICATION_APIKEY_USERS: 'mstefanovic@stetson.edu'
+
+      # Setting up user autherization
+      AUTHORIZATION_ADMINLIST_ENABLED: 'true'
+      AUTHORIZATION_ADMINLIST_USERS: 'mstefanovic@stetson.edu'
+  t2v-transformers:
+    image: semitechnologies/transformers-inference:sentence-transformers-multi-qa-MiniLM-L6-cos-v1
+    environment:
+      ENABLE_CUDA: 0 # set to 1 to enable
+      # NVIDIA_VISIBLE_DEVICES: all # enable if running with CUDA
