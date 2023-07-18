@@ -48,16 +48,25 @@ def setup_logger(name, log_level=logging.INFO) -> None:
 
 
 def setup_weaviate_db() -> None:
+    logger.info("Setting up Weaviate Client")
     global weaviate_client
 
     weaviate_api_key: Optional[str] = os.getenv("WEAVIATE_API_KEY")
     weaviate_url: Optional[str] = os.getenv("WEAVIATE_URL")
 
+    logger.info("Checking if API Keys exist")
+
     if weaviate_api_key is None:
-        raise ValueError("WEAVIATE_API_KEY environment variable is not set.")
+        error_message: str = "WEAVIATE_API_KEY environment variable is not set."
+        logger.error(error_message)
+        raise ValueError(error_message)
 
     if weaviate_url is None:
-        raise ValueError("WEAVIATE_URL environment variable is not set.")
+        error_message: str = "WEAVIATE_URL environment variable is not set."
+        logger.error(error_message)
+        raise ValueError(error_message)
+
+    logger.info("API Keys exist, connecting to database")
 
     auth_config: weaviate.AuthApiKey = weaviate.AuthApiKey(api_key=weaviate_api_key)
 
@@ -66,6 +75,43 @@ def setup_weaviate_db() -> None:
         url=weaviate_url,
         auth_client_secret=auth_config,
     )
+
+    logger.info("Connected to Weaviate database")
+
+    website = {
+        "class": "Webpage",
+        "description": "A webpage from a website specified in the whitelist",
+        "vectorizer": "text2vec-transformers",
+        "properties": [
+            {
+                "name": "title",
+                "description": "The title of the webpage",
+                "datatype": ["text"],
+            },
+            {
+                "name": "url",
+                "description": "The url of the webpage",
+                "datatype": ["text"],
+            },
+            {
+                "name": "section",
+                "description": "The section of the webpage",
+                "datatype": ["text"],
+            },
+            {
+                "name": "content",
+                "description": "The content of the webpage",
+                "datatype": ["text"],
+            },
+            {
+                "name": "last-updated",
+                "description": "The date when this entry was last modified",
+                "datatype": ["date"],
+            },
+        ],
+    }
+
+    weaviate_client.schema.create_class(website)
 
 
 def get_page(url: str) -> Optional[str]:
@@ -116,23 +162,24 @@ def parse_html_for_vector_db(html: str) -> list[str]:
     return paragraph_data
 
 
-def add_to_vector_db(items: [str]) -> None:
+def add_to_vector_db(items: list[str]) -> None:
     """
     Addes data to vector database.
     """
-    pass
+    logger.info("Adding items to Weaviate database")
 
 
 def start() -> None:
     load_dotenv()
 
+    setup_logger(__name__, logging.INFO)
     setup_weaviate_db()
-    setup_logger(__name__, logging.DEBUG)
 
     page = get_page(
         "https://catalog.stetson.edu/undergraduate/arts-sciences/computer-science/computer-science-bs/"
     )
     page_info = parse_html_for_vector_db(page)
+    add_to_vector_db(page_info)
 
 
 # TODO: This will be removed at somepoint
