@@ -1,6 +1,7 @@
 version: '3.4'
 services:
   weaviate:
+    # Sets up persitant storage if docker container is terminated
     volumes:
       - /var/weaviate:/var/lib/weaviate
     image: semitechnologies/weaviate:1.20.0
@@ -18,8 +19,8 @@ services:
 
       # Adding API support
       AUTHENTICATION_APIKEY_ENABLED: 'true'
-      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'matthew-secret-key'
-      AUTHENTICATION_APIKEY_USERS: 'mstefanovic@stetson.edu'
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: '${WEAVIATE_API_KEY}'
+      AUTHENTICATION_APIKEY_USERS: '${WEAVIATE_EMAIL}'
 
       # Setting up user autherization
       AUTHORIZATION_ADMINLIST_ENABLED: 'true'
