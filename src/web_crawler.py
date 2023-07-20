@@ -86,27 +86,27 @@ def setup_weaviate_db() -> None:
             {
                 "name": "title",
                 "description": "The title of the webpage",
-                "datatype": ["text"],
+                "dataType": ["text"],
             },
             {
                 "name": "url",
                 "description": "The url of the webpage",
-                "datatype": ["text"],
+                "dataType": ["text"],
             },
             {
                 "name": "section",
                 "description": "The section of the webpage",
-                "datatype": ["text"],
+                "dataType": ["text"],
             },
             {
                 "name": "content",
                 "description": "The content of the webpage",
-                "datatype": ["text"],
+                "dataType": ["text"],
             },
             {
                 "name": "last-updated",
                 "description": "The date when this entry was last modified",
-                "datatype": ["date"],
+                "dataType": ["date"],
             },
         ],
     }
