@@ -15,6 +15,7 @@ click==8.1.3
 colorlog==6.7.0
 cryptography==37.0.2
 cssselect==1.2.0
+<<<<<<< HEAD
 cupshelpers==1.0
 dasbus==1.7
 dbus-python==1.3.2
@@ -32,12 +33,16 @@ fros==1.1
 gpg==1.17.1
 hid-parser==0.0.3
 humanize==3.13.1
+=======
+docopt==0.6.2
+>>>>>>> ff7dcba6b035bba785d9f48ae6516562d9a6001d
 idna==3.4
 jsonschema==4.17.3
 langtable==0.0.62
 libcomps==0.1.18
 libvirt-python==9.0.0
 lxml==4.9.2
+<<<<<<< HEAD
 Mako==1.2.3
 MarkupSafe==2.1.2
 mercurial==6.3.3
@@ -77,6 +82,9 @@ pyudev==0.24.0
 pyxdg==0.27
 PyYAML==6.0
 ranger-fm==1.9.3
+=======
+python-dotenv==1.0.0
+>>>>>>> ff7dcba6b035bba785d9f48ae6516562d9a6001d
 readability-lxml==0.8.1
 regex==2022.10.31
 requests==2.31.0
@@ -97,4 +105,8 @@ Tempita==0.5.2
 texttable==1.6.4
 ufw==0.35
 urllib3==2.0.3
+<<<<<<< HEAD
 websocket-client==1.3.3
+=======
+yarg==0.1.9
+>>>>>>> ff7dcba6b035bba785d9f48ae6516562d9a6001d
