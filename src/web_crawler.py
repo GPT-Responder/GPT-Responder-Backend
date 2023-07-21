@@ -57,6 +57,7 @@ def setup_weaviate_db() -> None:
 
     logger.info("Checking if API Keys exist")
 
+    # TODO: Check if there is a better way to write this 
     if weaviate_api_key is None:
         error_message: str = "WEAVIATE_API_KEY environment variable is not set."
         logger.error(error_message)
@@ -100,6 +101,7 @@ def setup_weaviate_db() -> None:
                 "description": "The content of the webpage",
                 "dataType": ["text"],
             },
+            # TODO: This is probally redundent, Weaviate keeps track of this already
             {
                 "name": "last_updated",
                 "description": "The date when this entry was last modified",
@@ -145,11 +147,11 @@ def parse_html_for_vector_db(html: str) -> list[str]:
     """
     Takes in HTML input and returns an array of strings.
     """
-    logger.info(f"Parsing HTML")
     soup = BeautifulSoup(html, "html.parser")
     paragraphs = soup.find_all("p")
 
     # Extract text from each <p> tag and add it to a list
+    # TODO: Make this more readable 
     paragraph_data = [p.get_text() for p in paragraphs if p.get_text().strip()]
     for pos, p in enumerate(paragraph_data):
         logger.debug(f"Added <p> tag {pos}: {p}")
@@ -160,6 +162,7 @@ def parse_html_for_vector_db(html: str) -> list[str]:
 
 def add_webpage_to_db(site: str) -> bool:
     # Getting info from webpage
+    logger.info(f'Parsing HTML for {site}')
     webpage: Document = get_page(site)
     current_time: datetime = datetime.now(timezone.utc)
     title: str = webpage.title()
@@ -167,6 +170,7 @@ def add_webpage_to_db(site: str) -> bool:
     data: list[dict[str, str]] = []
 
     # Putting webpage info in json format
+    logger.info(f'Formating content for {site}')
     for content in page_contents:
         info: dict[str, str] = {
                     'title': title,
@@ -178,6 +182,7 @@ def add_webpage_to_db(site: str) -> bool:
         data.append(info)
 
     # Batch adding data to Weaviate Database
+    logger.info(f'Adding content to Weaviate database for {site}')
     with weaviate_client.batch as batch:
         batch.batch_size = 100
 
@@ -191,6 +196,7 @@ def add_webpage_to_db(site: str) -> bool:
                     'last_updated': d['last_updated']
                     }
             weaviate_client.batch.add_data_object(properties, "Webpage")
+    logger.debug(f'Content added to Weaviate database for {site}')
 
     return True # TODO: make this return false if getting the webpage fails
 
@@ -200,11 +206,16 @@ def start() -> None:
         load_dotenv()
 
 
-        setup_logger(__name__, logging.INFO)
+        setup_logger(__name__, logging.DEBUG)
         setup_weaviate_db()
-        site = "https://catalog.stetson.edu/undergraduate/arts-sciences/computer-science/computer-science-bs/"
+        webpages = [
+                    "https://catalog.stetson.edu/undergraduate/arts-sciences/computer-science/computer-science-bs/",
+                    "https://www.stetson.edu/other/academics/undergraduate/education.php"
+                    "https://www.stetson.edu/law/academics/clinical-education/federal-litigation-internship.php"
+                ] 
 
-        add_webpage_to_db(site)
+        for site in webpages:
+            add_webpage_to_db(site)
 
         import json
         print(
