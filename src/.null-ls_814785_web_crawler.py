@@ -2,7 +2,6 @@ from typing import Optional
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from readability import Document
-from datetime import datetime
 import requests
 import logging
 import colorlog
@@ -74,46 +73,45 @@ def setup_weaviate_db() -> None:
     # Instantiate the client with the auth config
     weaviate_client = weaviate.Client(
         url=weaviate_url,
-        # auth_client_secret=auth_config,
+        auth_client_secret=auth_config,
     )
 
     logger.info("Connected to Weaviate database")
 
-    # website = {
-    #     "class": "Webpage",
-    #     "description": "A webpage from a website specified in the whitelist",
-    #     "vectorizer": "text2vec-transformers",
-    #     "properties": [
-    #         {
-    #             "name": "title",
-    #             "description": "The title of the webpage",
-    #             "dataType": ["text"],
-    #         },
-    #         {
-    #             "name": "url",
-    #             "description": "The url of the webpage",
-    #             "dataType": ["text"],
-    #         },
-    #         {
-    #             "name": "section",
-    #             "description": "The section of the webpage",
-    #             "dataType": ["text"],
-    #         },
-    #         {
-    #             "name": "content",
-    #             "description": "The content of the webpage",
-    #             "dataType": ["text"],
-    #         },
-    #         {
-    #             "name": "last_updated",
-    #             "description": "The date when this entry was last modified",
-    #             "dataType": ["date"],
-    #         },
-    #     ],
-    # }
-    #
-    # TODO: figure out how to check if the class is already made 
-    # weaviate_client.schema.create_class(website) 
+    website = {
+        "class": "Webpage",
+        "description": "A webpage from a website specified in the whitelist",
+        "vectorizer": "text2vec-transformers",
+        "properties": [
+            {
+                "name": "title",
+                "description": "The title of the webpage",
+                "dataType": ["text"],
+            },
+            {
+                "name": "url",
+                "description": "The url of the webpage",
+                "dataType": ["text"],
+            },
+            {
+                "name": "section",
+                "description": "The section of the webpage",
+                "dataType": ["text"],
+            },
+            {
+                "name": "content",
+                "description": "The content of the webpage",
+                "dataType": ["text"],
+            },
+            {
+                "name": "last-updated",
+                "description": "The date when this entry was last modified",
+                "dataType": ["date"],
+            },
+        ],
+    }
+
+    weaviate_client.schema.create_class(website)
 
 
 def get_page(url: str) -> Optional[str]:
@@ -138,12 +136,12 @@ def get_page(url: str) -> Optional[str]:
 
     if doc:
         logger.info(f"Found text on {url}")
-        
+        # TODO: Should this be logged?
         logger.debug(f"HTML from {url}:\n{doc.summary()}")
     else:
         logger.info(f"No text found on {url}")
 
-    return doc
+    return doc.summary()
 
 
 def parse_html_for_vector_db(html: str) -> list[str]:
@@ -163,40 +161,6 @@ def parse_html_for_vector_db(html: str) -> list[str]:
 
     return paragraph_data
 
-def add_webpage_to_db(site: str) -> bool:
-    # Getting info from webpage
-    webpage: Document = get_page(site)
-    current_time: datetime = datetime.now()
-    title: str = webpage.title()
-    page_contents: list[str] = parse_html_for_vector_db(webpage.summary())
-    data: list[dict[str, str]] = []
-
-    # Putting webpage info in json format
-    for content in page_contents:
-        info: dict[str, str] = {
-                    'title': title,
-                    'url': site, 
-                    # 'section': section # TODO: Code in section
-                    'content': content,
-                    'last_updated': current_time
-                }
-        data.append(info)
-
-    # Batch adding data to Weaviate Database
-    with weaviate_client.batch as batch:
-        batch.batch_size = 100
-
-        for i, d in enumerate(data):
-            properties = {
-                    'title': d['title'],
-                    'url': d['url'], 
-                    # 'section': section # TODO: Code in section
-                    'content': d['content'],
-                    'last_updated': d['last_updated']
-                    }
-
-    return True # TODO: make this return false if getting the webpage fails
-
 
 def add_to_vector_db(items: list[str]) -> None:
     """
@@ -206,16 +170,16 @@ def add_to_vector_db(items: list[str]) -> None:
 
 
 def start() -> None:
-    try: 
-        load_dotenv()
+    load_dotenv()
 
-        setup_logger(__name__, logging.INFO)
-        setup_weaviate_db()
-        site = "https://catalog.stetson.edu/undergraduate/arts-sciences/computer-science/computer-science-bs/"
+    setup_logger(__name__, logging.INFO)
+    setup_weaviate_db()
 
-        add_webpage_to_db(site)
-    except KeyboardInterrupt:
-        logger.WARNING('Exiting program, have a nice day :)')
+    page = get_page(
+        "https://catalog.stetson.edu/undergraduate/arts-sciences/computer-science/computer-science-bs/"
+    )
+    page_info = parse_html_for_vector_db(page)
+    add_to_vector_db(page_info)
 
 
 # TODO: This will be removed at somepoint

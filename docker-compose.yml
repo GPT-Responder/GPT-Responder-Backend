@@ -2,8 +2,8 @@ version: '3.4'
 services:
   weaviate:
     # Sets up persitant storage if docker container is terminated
-    volumes:
-      - /var/weaviate:/var/lib/weaviate
+    # volumes:
+    #   - /var/weaviate:/var/lib/weaviate
     image: semitechnologies/weaviate:1.20.0
     restart: on-failure:0
     ports:
@@ -17,14 +17,15 @@ services:
       TRANSFORMERS_INFERENCE_API: http://t2v-transformers:8080
       CLUSTER_HOSTNAME: 'node1'
 
+      # TODO: Add back API support
       # Adding API support
-      AUTHENTICATION_APIKEY_ENABLED: 'true'
-      AUTHENTICATION_APIKEY_ALLOWED_KEYS: '${WEAVIATE_API_KEY}'
-      AUTHENTICATION_APIKEY_USERS: '${WEAVIATE_EMAIL}'
-
-      # Setting up user autherization
-      AUTHORIZATION_ADMINLIST_ENABLED: 'true'
-      AUTHORIZATION_ADMINLIST_USERS: 'mstefanovic@stetson.edu'
+      # AUTHENTICATION_APIKEY_ENABLED: 'true'
+      # AUTHENTICATION_APIKEY_ALLOWED_KEYS: '${WEAVIATE_API_KEY}'
+      # AUTHENTICATION_APIKEY_USERS: '${WEAVIATE_EMAIL}'
+      #
+      # # Setting up user autherization
+      # AUTHORIZATION_ADMINLIST_ENABLED: 'true'
+      # AUTHORIZATION_ADMINLIST_USERS: 'mstefanovic@stetson.edu'
   t2v-transformers:
     image: semitechnologies/transformers-inference:sentence-transformers-multi-qa-MiniLM-L6-cos-v1
     environment:
