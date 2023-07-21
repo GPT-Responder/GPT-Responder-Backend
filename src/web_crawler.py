@@ -95,11 +95,6 @@ def setup_weaviate_db() -> None:
                 "description": "The url of the webpage",
                 "dataType": ["text"],
             },
-            # {
-            #     "name": "section",
-            #     "description": "The section of the webpage",
-            #     "dataType": ["text"],
-            # },
             {
                 "name": "content",
                 "description": "The content of the webpage",
@@ -116,7 +111,7 @@ def setup_weaviate_db() -> None:
     # weaviate_client.schema.create_class(website) 
 
 
-def get_page(url: str) -> Optional[str]:
+def get_page(url: str) -> Document:
     """
     Takes in a single URL and returns only relavent information from the page
     """
@@ -126,11 +121,11 @@ def get_page(url: str) -> Optional[str]:
 
     except requests.HTTPError as http_err:
         logger.error(f"HTTP error occurred: {http_err}")
-        return None
+        return
 
     except Exception as err:
         logger.error(f"Other error occurred: {err}")
-        return None
+        return
     else:
         logger.info(f"Site {url} receved, parsing text")
 
@@ -214,7 +209,8 @@ def start() -> None:
         import json
         print(
                 json.dumps(
-                    weaviate_client.data_object.get()
+                    weaviate_client.data_object.get(),
+                    indent = 2
                     )
                 )
     except KeyboardInterrupt:
