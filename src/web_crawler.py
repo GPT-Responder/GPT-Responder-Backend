@@ -8,6 +8,8 @@ import logging
 import colorlog
 import weaviate
 import os
+import json
+import openai
 
 
 def setup_logger(name, log_level=logging.INFO) -> None:
@@ -193,8 +195,88 @@ def add_webpage_to_db(site: str) -> bool:
     return True  # TODO: make this return false if getting the webpage fails
 
 
+# def vector_search(
+#     class_name: str, concepts: list[str], properties: list[str]
+# ) -> dict[str, any]:
+#     response = (
+#         weaviate_client.query.get(class_name, properties)
+#         .with_near_text({"concepts": concepts})
+#         .with_limit(2)
+#         .do()
+#     )
+#
+#     return response
+
+
+def vector_search(
+    class_name: str,
+    concepts: list[str],
+    properties: list[str],
+    limit: int = 1,
+    move_to: Optional[list[str]] = None,
+    move_away_from: Optional[list[str]] = None,
+    force: float = 0.5,
+) -> dict:
+    """
+    Perform a vector search on a Weaviate class.
+
+    Parameters:
+    - class_name: The name of the class to search.
+    - concepts: A list of concepts to search for.
+    - properties: A list of properties to return in the search results.
+    - limit: The maximum number of results to return.
+    - move_to: An optional list of concepts to move towards in the search.
+    - move_away_from: An optional list of concepts to move away from in the search.
+    - force: The force to apply when moving towards or away from concepts (default is 0.5).
+    """
+
+    logger.info(
+        f"Performing vector search on class {class_name} for concepts {concepts}..."
+    )
+
+    # Define the search parameters
+    search_params = {
+        "concepts": concepts,
+    }
+
+    # Optionally move towards certain concepts
+    if move_to is not None:
+        search_params["moveTo"] = {"values": move_to, "force": force}
+
+    # Optionally move away from certain concepts
+    if move_away_from is not None:
+        search_params["moveAwayFrom"] = {"values": move_away_from, "force": force}
+
+    # Perform the search
+    try:
+        query = weaviate_client.query.get(class_name, properties)
+        result = query.with_near_text(search_params).with_limit(limit).do()
+        logger.info(f"Vector search completed successfully.")
+    except Exception as e:
+        logger.error(f"Vector search failed with error: {e}")
+        return None
+
+    return result
+
+
+def gpt_stuff(content: str, role: str = "You are a helpful assistant.") -> dict:
+    openai.api_key = os.getenv(
+        "OPENAI_API_KEY"
+    )  # TODO: Move OpenAI authenication somewhere else later
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": role},
+            {"role": "user", "content": content},
+        ],
+    )
+
+    return response
+
+
 def start() -> None:
-    setup_logger(__name__, logging.DEBUG)
+    setup_logger(__name__, logging.INFO)
 
     try:
         load_dotenv()
@@ -206,12 +288,27 @@ def start() -> None:
             "https://www.stetson.edu/law/academics/clinical-education/federal-litigation-internship.php",
         ]
 
+        question: str = "What are the writing requirments to complete a degree in Computer Science degree?"
+
         for site in webpages:
             add_webpage_to_db(site)
 
-        import json
+        response = vector_search(
+            "Webpage",
+            [question],
+            ["title", "content", "url"],
+        )
 
-        print(json.dumps(weaviate_client.data_object.get(), indent=2))
+        print(json.dumps(response, indent=2))
+
+        role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions."
+        answer = response["data"]["Get"]["Webpage"][0]["content"]
+        url = response["data"]["Get"]["Webpage"][0]["url"]
+
+        content = f"Question: {question}\nAnswer: {answer} URL: {url}"
+
+        print(gpt_stuff(content, role=role))
+
     except KeyboardInterrupt:
         logger.WARNING("Exiting program, have a nice day :)")
 
