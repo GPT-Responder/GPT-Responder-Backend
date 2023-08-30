@@ -40,32 +40,10 @@ class WeaviateHandler:
         logger.info("Connected to Weaviate database")
 
     # TODO: rewrite this to create new classes
-    def setup_weaviate_db(self):
+    def add_schema(self, schema):
         # TODO: figure out how to check if the class is already made
-        website = {
-            "class": "Webpage",
-            "description": "A webpage from a website specified in the whitelist",
-            "vectorizer": "text2vec-transformers",
-            "properties": [
-                {
-                    "name": "title",
-                    "description": "The title of the webpage",
-                    "dataType": ["text"],
-                },
-                {
-                    "name": "url",
-                    "description": "The url of the webpage",
-                    "dataType": ["text"],
-                },
-                {
-                    "name": "content",
-                    "description": "The content of the webpage",
-                    "dataType": ["text"],
-                },
-            ],
-        }
 
-        # weaviate.schema.create_class(website)
+        self.client.schema.create_class(schema)
 
     def batch_add(data, batch_size=100):
         with weaviate.batch as batch:
@@ -82,3 +60,54 @@ class WeaviateHandler:
         logger.debug(f"Content added to Weaviate database")
 
         return True  # TODO: make this return false if getting the webpage fails
+
+    def vector_search(
+        self,
+        class_name,
+        concepts,
+        properties,
+        limit = 1,
+        move_to = None,
+        move_away_from = None,
+        force = 0.5,
+    ):
+        """
+        Perform a vector search on a Weaviate class.
+
+        Parameters:
+        - class_name: The name of the class to search.
+        - concepts: A list of concepts to search for.
+        - properties: A list of properties to return in the search results.
+        - limit: The maximum number of results to return.
+        - move_to: An optional list of concepts to move towards in the search.
+        - move_away_from: An optional list of concepts to move away from in the search.
+        - force: The force to apply when moving towards or away from concepts (default is 0.5).
+        """
+
+        logger.info(
+            f"Performing vector search on class {class_name} for concepts {concepts}..."
+        )
+
+        # Define the search parameters
+        search_params = {
+            "concepts": concepts,
+        }
+
+        # Optionally move towards certain concepts
+        if move_to is not None:
+            search_params["moveTo"] = {"values": move_to, "force": force}
+
+        # Optionally move away from certain concepts
+        if move_away_from is not None:
+            search_params["moveAwayFrom"] = {"values": move_away_from, "force": force}
+
+        # Perform the search
+        try:
+            query = self.client.query.get(class_name, properties)
+            result = query.with_near_text(search_params).with_limit(limit).do()
+            logger.info(f"Vector search completed successfully.")
+        except Exception as e:
+            logger.error(f"Vector search failed with error: {e}")
+            return None
+
+        return result

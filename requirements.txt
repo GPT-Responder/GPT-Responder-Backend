@@ -41,3 +41,4 @@ urllib3==2.0.3
 validators==0.20.0
 weaviate-client==3.22.1
 websocket-client==0.59.0
+PyYAML==5.4.1

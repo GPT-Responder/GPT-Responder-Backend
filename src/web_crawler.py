@@ -1,6 +1,7 @@
 import requests
-import os
 import logging
+import openai
+import os
 
 from typing import Optional
 from bs4 import BeautifulSoup
@@ -82,14 +83,55 @@ def add_webpage(site):
     # Batch adding data to Weaviate Database
     logger.info(f"Adding content to Weaviate database for {site}")
 
-def start():
-    setup_logger(__name__, logging.DEBUG)
+
+
+def gpt_stuff(content: str, role: str = "You are a helpful assistant.") -> dict:
+    openai.api_key = os.getenv(
+        "OPENAI_API_KEY"
+    )  # TODO: Move OpenAI authenication somewhere else later
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": role},
+            {"role": "user", "content": content},
+        ],
+    )
+
+    return response
+
+
+def start() -> None:
+    setup_logger(__name__, logging.INFO)
 
     try:
         load_dotenv()
 
+        website = {
+            "class": "Webpage",
+            "description": "A webpage from a website specified in the whitelist",
+            "vectorizer": "text2vec-transformers",
+            "properties": [
+                {
+                    "name": "title",
+                    "description": "The title of the webpage",
+                    "dataType": ["text"],
+                },
+                {
+                    "name": "url",
+                    "description": "The url of the webpage",
+                    "dataType": ["text"],
+                },
+                {
+                    "name": "content",
+                    "description": "The content of the webpage",
+                    "dataType": ["text"],
+                },
+            ],
+        }
+
         weaviate = WeaviateHandler()
-        weaviate.setup_weaviate_db()
+        weaviate.add_schema(website)
 
         webpages = [
             "https://catalog.stetson.edu/undergraduate/arts-sciences/computer-science/computer-science-bs/",
@@ -97,8 +139,28 @@ def start():
             "https://www.stetson.edu/law/academics/clinical-education/federal-litigation-internship.php",
         ]
 
+        question: str = "What are the writing requirments to complete a degree in Computer Science degree?"
+
         for site in webpages:
             add_webpage(site)  # Assuming this is imported from the weaviate module
+
+        response = weaviate.vector_search(
+            "Webpage",
+            [question],
+            ["title", "content", "url"],
+        )
+
+        import json # TODO: Remember to remove this
+        print(json.dumps(response, indent=2))
+
+        role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions."
+        answer = response["data"]["Get"]["Webpage"][0]["content"]
+        url = response["data"]["Get"]["Webpage"][0]["url"]
+
+        content = f"Question: {question}\nAnswer: {answer} URL: {url}"
+
+        print(gpt_stuff(content, role=role))
+
     except KeyboardInterrupt:
         logger.WARNING("Exiting program, have a nice day :)")
 
