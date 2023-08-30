@@ -12,7 +12,6 @@ from weaviate_handler import WeaviateHandler
 from logger import setup_logger
 
 logger = setup_logger(__name__)
-weaviate = WeaviateHandler()
 
 def get_page(url):
     """
@@ -132,6 +131,7 @@ def start() -> None:
             ],
         }
 
+         weaviate = WeaviateHandler()
         # weaviate.add_schema(website)
 
         webpages = [
