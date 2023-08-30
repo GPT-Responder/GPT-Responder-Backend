@@ -12,6 +12,7 @@ from weaviate_handler import WeaviateHandler
 from logger import setup_logger
 
 logger = setup_logger(__name__)
+weaviate = WeaviateHandler()
 
 def get_page(url):
     """
@@ -82,6 +83,7 @@ def add_webpage(site):
 
     # Batch adding data to Weaviate Database
     logger.info(f"Adding content to Weaviate database for {site}")
+    weaviate.batch_add(data)
 
 
 
@@ -130,8 +132,7 @@ def start() -> None:
             ],
         }
 
-        weaviate = WeaviateHandler()
-        weaviate.add_schema(website)
+        # weaviate.add_schema(website)
 
         webpages = [
             "https://catalog.stetson.edu/undergraduate/arts-sciences/computer-science/computer-science-bs/",

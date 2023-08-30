@@ -30,7 +30,7 @@ services:
 
       # Setting up user autherization
       AUTHORIZATION_ADMINLIST_ENABLED: 'true'
-      AUTHORIZATION_ADMINLIST_USERS: 'mstefanovic@stetson.edu'
+      AUTHORIZATION_ADMINLIST_USERS: '${WEAVIATE_EMAIL}'
   t2v-transformers:
     image: semitechnologies/transformers-inference:sentence-transformers-multi-qa-MiniLM-L6-cos-v1
     environment:
