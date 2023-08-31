@@ -28,15 +28,13 @@ class WeaviateHandler:
 
         logger.info("API Keys exist, connecting to database")
 
-        # auth_config = weaviate.AuthApiKey(api_key=weaviate_api_key)
+        auth_config = weaviate.AuthApiKey(api_key=weaviate_api_key)
 
-        # self.client = weaviate.Client(
-        #     url=weaviate_url,
-        #     auth_client_secret=auth_config
-        # )
+        self.client = weaviate.Client(
+            url=weaviate_url,
+            auth_client_secret=auth_config
+        )
         
-        self.client = weaviate.Client(weaviate_url)
-
         logger.info("Connected to Weaviate database")
 
     # TODO: rewrite this to create new classes
@@ -45,8 +43,8 @@ class WeaviateHandler:
 
         self.client.schema.create_class(schema)
 
-    def batch_add(data, batch_size=100):
-        with weaviate.batch as batch:
+    def batch_add(self, data, batch_size=100):
+        with self.client.batch as batch:
             batch.batch_size = batch_size
 
             for i, d in enumerate(data):
@@ -56,10 +54,8 @@ class WeaviateHandler:
                     "url": d["url"],
                     "content": d["content"],
                 }
-                weaviate.batch.add_data_object(properties, "Webpage")
+                self.client.batch.add_data_object(properties, "Webpage")
         logger.debug(f"Content added to Weaviate database")
-
-        return True  # TODO: make this return false if getting the webpage fails
 
     def vector_search(
         self,

@@ -102,7 +102,7 @@ def gpt_stuff(content: str, role: str = "You are a helpful assistant.") -> dict:
     return response
 
 
-def start() -> None:
+def start():
     setup_logger(__name__, logging.INFO)
 
     try:
@@ -131,7 +131,8 @@ def start() -> None:
             ],
         }
 
-         weaviate = WeaviateHandler()
+        global weaviate
+        weaviate = WeaviateHandler()
         # weaviate.add_schema(website)
 
         webpages = [
