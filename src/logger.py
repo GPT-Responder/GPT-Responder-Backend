@@ -1,6 +1,7 @@
 import logging
 import colorlog
 
+
 def setup_logger(name, log_level=logging.INFO):
     """
     Sets up the logger
@@ -18,6 +19,7 @@ def setup_logger(name, log_level=logging.INFO):
     # Create a logger
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
+    logger.propagate = False
 
     # Create console handler
     ch: logging.StreamHandler = logging.StreamHandler()

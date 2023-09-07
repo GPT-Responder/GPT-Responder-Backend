@@ -42,6 +42,7 @@ class WebpageSpider(scrapy.Spider):
             self.logger.warning(f"No content found in URL: {response.url}")
 
         for content in page_contents:
+            print("RESPONSE URL:", response.url)
             add_webpage(response.url, content)
 
         # Follow links to other pages within the allowed domains
@@ -186,9 +187,12 @@ if __name__ == "__main__":
         weaviate = WeaviateHandler()
         # weaviate.add_schema(website)
 
-        urls = ["http://stetson.edu"]
+        start_urls = ["https://stetson.edu"]
+        allowed_urls = ["stetson.edu"]
         process = CrawlerProcess(get_project_settings())
-        process.crawl(WebpageSpider, start_urls=urls, allowed_domains=urls)
+        process.crawl(
+            WebpageSpider, start_urls=start_urls, allowed_domains=allowed_urls
+        )
         process.start()
 
         question = "Who came to DeLand to perform the voicing of the 2,548 pipes after the Beckerath Organ was assembled in the Elizabeth Hall Chapel?"
