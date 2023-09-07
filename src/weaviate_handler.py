@@ -6,36 +6,34 @@ from logger import setup_logger
 
 logger = setup_logger(__name__)
 
+
 class WeaviateHandler:
     def __init__(self):
-        logger.info("Setting up Weaviate Client")
+        logging.info("Setting up Weaviate Client")
 
         weaviate_api_key = os.getenv("WEAVIATE_API_KEY")
         weaviate_url = os.getenv("WEAVIATE_URL")
 
-        logger.info("Checking if API Keys exist")
+        logging.info("Checking if API Keys exist")
 
         # TODO: Check if there is a better way to write this
         if weaviate_api_key is None:
             error_message = "WEAVIATE_API_KEY environment variable is not set."
-            logger.error(error_message)
+            logging.error(error_message)
             raise ValueError(error_message)
 
         if weaviate_url is None:
             error_message = "WEAVIATE_URL environment variable is not set."
-            logger.error(error_message)
+            logging.error(error_message)
             raise ValueError(error_message)
 
-        logger.info("API Keys exist, connecting to database")
+        logging.info("API Keys exist, connecting to database")
 
         auth_config = weaviate.AuthApiKey(api_key=weaviate_api_key)
 
-        self.client = weaviate.Client(
-            url=weaviate_url,
-            auth_client_secret=auth_config
-        )
-        
-        logger.info("Connected to Weaviate database")
+        self.client = weaviate.Client(url=weaviate_url, auth_client_secret=auth_config)
+
+        logging.info("Connected to Weaviate database")
 
     # TODO: rewrite this to create new classes
     def add_schema(self, schema):
@@ -48,24 +46,24 @@ class WeaviateHandler:
             batch.batch_size = batch_size
 
             for i, d in enumerate(data):
-                logger.debug(f"Adding the following to Weaviate database:\n{d}")
+                logging.debug(f"Adding the following to Weaviate database:\n{d}")
                 properties = {
                     "title": d["title"],
                     "url": d["url"],
                     "content": d["content"],
                 }
                 self.client.batch.add_data_object(properties, "Webpage")
-        logger.debug(f"Content added to Weaviate database")
+        logging.debug("Content added to Weaviate database")
 
     def vector_search(
         self,
         class_name,
         concepts,
         properties,
-        limit = 1,
-        move_to = None,
-        move_away_from = None,
-        force = 0.5,
+        limit=1,
+        move_to=None,
+        move_away_from=None,
+        force=0.5,
     ):
         """
         Perform a vector search on a Weaviate class.
@@ -76,11 +74,13 @@ class WeaviateHandler:
         - properties: A list of properties to return in the search results.
         - limit: The maximum number of results to return.
         - move_to: An optional list of concepts to move towards in the search.
-        - move_away_from: An optional list of concepts to move away from in the search.
-        - force: The force to apply when moving towards or away from concepts (default is 0.5).
+        - move_away_from: An optional list of concepts to move away from in the
+          search.
+        - force: The force to apply when moving towards or away from concepts
+          (default is 0.5).
         """
 
-        logger.info(
+        logging.info(
             f"Performing vector search on class {class_name} for concepts {concepts}..."
         )
 
@@ -101,9 +101,10 @@ class WeaviateHandler:
         try:
             query = self.client.query.get(class_name, properties)
             result = query.with_near_text(search_params).with_limit(limit).do()
-            logger.info(f"Vector search completed successfully.")
+            print(result)
+            logging.info(f"Vector search completed successfully.")
         except Exception as e:
-            logger.error(f"Vector search failed with error: {e}")
+            logging.error(f"Vector search failed with error: {e}")
             return None
 
         return result

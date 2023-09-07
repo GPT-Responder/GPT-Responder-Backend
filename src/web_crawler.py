@@ -1,18 +1,56 @@
 import requests
 import logging
+import scrapy
 import openai
 import os
 
-from typing import Optional
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from readability import Document
 from datetime import datetime, timezone
 from weaviate_handler import WeaviateHandler
 from logger import setup_logger
+from scrapy.crawler import CrawlerProcess
+from scrapy.utils.project import get_project_settings
 
 logger = setup_logger(__name__)
 
+
+class WebpageSpider(scrapy.Spider):
+    name = "webpage_spider"
+    logger = logging.getLogger("WebpageSpider")
+
+    custom_settings = {
+        "AUTOTHROTTLE_ENABLED": True,
+        "AUTOTHROTTLE_START_DELAY": 5,
+        "AUTOTHROTTLE_MAX_DELAY": 60,
+        "AUTOTHROTTLE_TARGET_CONCURRENCY": 1.0,
+    }
+
+    def __init__(self, *args, **kwargs):
+        super(WebpageSpider, self).__init__(*args, **kwargs)
+        self.start_urls = kwargs.get("start_urls")
+        self.allowed_domains = kwargs.get("allowed_domains", [])
+
+    def parse(self, response):
+        # Logging the URL being processed.
+        self.logger.info(f"Processing URL: {response.url}")
+
+        # Extract content from the current page
+        page_contents = parse_html_for_vector_db(response.text)
+        if not page_contents:
+            self.logger.warning(f"No content found in URL: {response.url}")
+
+        for content in page_contents:
+            add_webpage(response.url, content)
+
+        # Follow links to other pages within the allowed domains
+        for href in response.css("a::attr(href)").extract():
+            self.logger.debug(f"Following link: {href}")
+            yield response.follow(href, self.parse)
+
+
+# NOTE: This probally be deleted when the Scrapy is added
 def get_page(url):
     """
     Takes in a single URL and returns only relavent information from the page
@@ -52,38 +90,51 @@ def parse_html_for_vector_db(html):
     paragraphs = soup.find_all("p")
 
     # Extract text from each <p> tag and add it to a list
-    # TODO: Make this more readable
     paragraph_data = [p.get_text() for p in paragraphs if p.get_text().strip()]
     for pos, p in enumerate(paragraph_data):
         logger.debug(f"Added <p> tag {pos}: {p}")
+
+    if paragraph_data:
+        logger.info(f"Parsed HTML and extracted {len(paragraph_data)} paragraphs.")
+    else:
+        logger.warning(f"No text content found in the provided HTML.")
 
     # TODO: Add something that parses tables
 
     return paragraph_data
 
-def add_webpage(site):
-    # Getting info from webpage
-    logger.info(f"Parsing HTML for {site}")
-    webpage = get_page(site)
+
+def add_webpage(url, html_content):
+    """
+    Adds the given webpage content (associated with a URL) to the database.
+    """
+    logger.info(f"Processing webpage: {url}")
+
+    doc = Document(html_content)
     current_time = datetime.now(timezone.utc)
-    title = webpage.title()
-    page_contents = parse_html_for_vector_db(webpage.summary())
+    title = doc.title()
     data = []
 
-    # Putting webpage info in json format
-    logger.info(f"Formating content for {site}")
+    if title:
+        logger.info(f"Extracted title: {title}")
+    else:
+        logger.warning(f"Couldn't extract a title for {url}")
+
+    page_contents = parse_html_for_vector_db(doc.summary())
+
+    # Putting webpage info in JSON format
+    logger.info(f"Formating content for {url}")
     for content in page_contents:
         info = {
             "title": title,
-            "url": site,
+            "url": url,
             "content": content,
         }
         data.append(info)
 
     # Batch adding data to Weaviate Database
-    logger.info(f"Adding content to Weaviate database for {site}")
+    logger.info(f"Adding content to Weaviate database for {url}")
     weaviate.batch_add(data)
-
 
 
 def gpt_stuff(content: str, role: str = "You are a helpful assistant.") -> dict:
@@ -102,7 +153,7 @@ def gpt_stuff(content: str, role: str = "You are a helpful assistant.") -> dict:
     return response
 
 
-def start():
+if __name__ == "__main__":
     setup_logger(__name__, logging.INFO)
 
     try:
@@ -135,25 +186,18 @@ def start():
         weaviate = WeaviateHandler()
         # weaviate.add_schema(website)
 
-        webpages = [
-            "https://catalog.stetson.edu/undergraduate/arts-sciences/computer-science/computer-science-bs/",
-            "https://www.stetson.edu/other/academics/undergraduate/education.php",
-            "https://www.stetson.edu/law/academics/clinical-education/federal-litigation-internship.php",
-        ]
+        urls = ["http://stetson.edu"]
+        process = CrawlerProcess(get_project_settings())
+        process.crawl(WebpageSpider, start_urls=urls, allowed_domains=urls)
+        process.start()
 
-        question: str = "What are the writing requirments to complete a degree in Computer Science degree?"
-
-        for site in webpages:
-            add_webpage(site)  # Assuming this is imported from the weaviate module
+        question = "Who came to DeLand to perform the voicing of the 2,548 pipes after the Beckerath Organ was assembled in the Elizabeth Hall Chapel?"
 
         response = weaviate.vector_search(
             "Webpage",
             [question],
             ["title", "content", "url"],
         )
-
-        import json # TODO: Remember to remove this
-        print(json.dumps(response, indent=2))
 
         role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions."
         answer = response["data"]["Get"]["Webpage"][0]["content"]
@@ -165,6 +209,3 @@ def start():
 
     except KeyboardInterrupt:
         logger.WARNING("Exiting program, have a nice day :)")
-
-if __name__ == "__main__":
-    start()
