@@ -51,38 +51,6 @@ class WebpageSpider(scrapy.Spider):
             yield response.follow(href, self.parse)
 
 
-# NOTE: This probally be deleted when the Scrapy is added
-def get_page(url):
-    """
-    Takes in a single URL and returns only relavent information from the page
-    """
-    try:
-        logger.info(f"Requesting site: {url}")
-        response = requests.get(url)
-
-    except requests.HTTPError as http_err:
-        logger.error(f"HTTP error occurred: {http_err}")
-        raise
-
-    except Exception as err:
-        logger.error(f"Other error occurred: {err}")
-        raise
-
-    else:
-        logger.info(f"Site {url} receved, parsing text")
-
-    doc = Document(response.text)
-
-    if doc:
-        logger.info(f"Found text on {url}")
-
-        logger.debug(f"HTML from {url}:\n{doc.summary()}")
-    else:
-        logger.info(f"No text found on {url}")
-
-    return doc
-
-
 def parse_html_for_vector_db(html):
     """
     Takes in HTML input and returns an array of strings.
