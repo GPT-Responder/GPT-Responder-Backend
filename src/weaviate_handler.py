@@ -2,38 +2,39 @@ import weaviate
 import logging
 import os
 
-from logger import setup_logger
+from logger_setup import setup_logger
 
 logger = setup_logger(__name__)
 
 
 class WeaviateHandler:
     def __init__(self):
-        logging.info("Setting up Weaviate Client")
+        logger.info("Setting up Weaviate Client")
 
         weaviate_api_key = os.getenv("WEAVIATE_API_KEY")
         weaviate_url = os.getenv("WEAVIATE_URL")
 
-        logging.info("Checking if API Keys exist")
+        logger.info("Checking if API Keys exist")
 
         # TODO: Check if there is a better way to write this
         if weaviate_api_key is None:
             error_message = "WEAVIATE_API_KEY environment variable is not set."
-            logging.error(error_message)
+            logger.error(error_message)
             raise ValueError(error_message)
 
         if weaviate_url is None:
             error_message = "WEAVIATE_URL environment variable is not set."
-            logging.error(error_message)
+            logger.error(error_message)
             raise ValueError(error_message)
 
-        logging.info("API Keys exist, connecting to database")
+        logger.info("API Keys exist, connecting to database")
 
         auth_config = weaviate.AuthApiKey(api_key=weaviate_api_key)
 
-        self.client = weaviate.Client(url=weaviate_url, auth_client_secret=auth_config)
+        # self.client = weaviate.Client(url=weaviate_url, auth_client_secret=auth_config)
+        self.client = weaviate.Client(url=weaviate_url)
 
-        logging.info("Connected to Weaviate database")
+        logger.info("Connected to Weaviate database")
 
     # TODO: rewrite this to create new classes
     def add_schema(self, schema):
@@ -46,14 +47,14 @@ class WeaviateHandler:
             batch.batch_size = batch_size
 
             for i, d in enumerate(data):
-                logging.debug(f"Adding the following to Weaviate database:\n{d}")
+                logger.debug(f"Adding the following to Weaviate database:\n{d}")
                 properties = {
                     "title": d["title"],
                     "url": d["url"],
                     "content": d["content"],
                 }
                 self.client.batch.add_data_object(properties, "Webpage")
-        logging.debug("Content added to Weaviate database")
+        logger.debug("Content added to Weaviate database")
 
     def vector_search(
         self,
@@ -80,7 +81,7 @@ class WeaviateHandler:
           (default is 0.5).
         """
 
-        logging.info(
+        logger.info(
             f"Performing vector search on class {class_name} for concepts {concepts}..."
         )
 
@@ -102,9 +103,23 @@ class WeaviateHandler:
             query = self.client.query.get(class_name, properties)
             result = query.with_near_text(search_params).with_limit(limit).do()
             print(result)
-            logging.info(f"Vector search completed successfully.")
+            logger.info(f"Vector search completed successfully.")
         except Exception as e:
-            logging.error(f"Vector search failed with error: {e}")
+            logger.error(f"Vector search failed with error: {e}")
             return None
 
         return result
+
+    def get_batch_with_cursor(
+        self, class_name, class_properties, batch_size, cursor=None
+    ):
+        query = (
+            self.client.query.get(class_name, class_properties)
+            # Optionally retrieve the vector embedding by adding `vector` to the _additional fields
+            .with_additional(["id vector"]).with_limit(batch_size)
+        )
+
+        if cursor is not None:
+            return query.with_after(cursor).do()
+        else:
+            return query.do()

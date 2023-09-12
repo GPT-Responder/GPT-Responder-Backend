@@ -23,13 +23,13 @@ services:
       DEFAULT_VECTORIZER_MODULE: 'text2vec-transformers'
       ENABLE_MODULES: 'text2vec-transformers,qna-transformers,ner-transformers'
       CLUSTER_HOSTNAME: 'node1'
-      # Adding API support
-      AUTHENTICATION_APIKEY_ENABLED: 'true'
-      AUTHENTICATION_APIKEY_ALLOWED_KEYS: '${WEAVIATE_API_KEY}'
-      AUTHENTICATION_APIKEY_USERS: '${WEAVIATE_EMAIL}'
-      # Setting up user autherization
-      AUTHORIZATION_ADMINLIST_ENABLED: 'true'
-      AUTHORIZATION_ADMINLIST_USERS: '${WEAVIATE_EMAIL}'
+      # # Adding API support
+      # AUTHENTICATION_APIKEY_ENABLED: 'true'
+      # AUTHENTICATION_APIKEY_ALLOWED_KEYS: '${WEAVIATE_API_KEY}'
+      # AUTHENTICATION_APIKEY_USERS: '${WEAVIATE_EMAIL}'
+      # # Setting up user autherization
+      # AUTHORIZATION_ADMINLIST_ENABLED: 'true'
+      # AUTHORIZATION_ADMINLIST_USERS: '${WEAVIATE_EMAIL}'
   t2v-transformers:
     image: semitechnologies/transformers-inference:sentence-transformers-multi-qa-MiniLM-L6-cos-v1
     environment:

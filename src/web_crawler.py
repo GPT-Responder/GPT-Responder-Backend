@@ -1,26 +1,26 @@
 import requests
-import logging
 import scrapy
+import logging
 import openai
 import os
 
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from logger_setup import setup_logger
 from readability import Document
 from datetime import datetime, timezone
 from weaviate_handler import WeaviateHandler
-from logger import setup_logger
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 
-logger = setup_logger(__name__)
+logger = setup_logger(logger_name=__name__, log_level=logging.DEBUG)
 
 
 class WebpageSpider(scrapy.Spider):
     name = "webpage_spider"
-    logger = logging.getLogger("WebpageSpider")
 
     custom_settings = {
+        "LOG_ENABLED": False,
         "AUTOTHROTTLE_ENABLED": True,
         "AUTOTHROTTLE_START_DELAY": 5,
         "AUTOTHROTTLE_MAX_DELAY": 60,
@@ -34,12 +34,12 @@ class WebpageSpider(scrapy.Spider):
 
     def parse(self, response):
         # Logging the URL being processed.
-        self.logger.info(f"Processing URL: {response.url}")
+        logger.info(f"Processing URL: {response.url}")
 
         # Extract content from the current page
         page_contents = parse_html_for_vector_db(response.text)
         if not page_contents:
-            self.logger.warning(f"No content found in URL: {response.url}")
+            logger.warning(f"No content found in URL: {response.url}")
 
         for content in page_contents:
             print("RESPONSE URL:", response.url)
@@ -47,7 +47,7 @@ class WebpageSpider(scrapy.Spider):
 
         # Follow links to other pages within the allowed domains
         for href in response.css("a::attr(href)").extract():
-            self.logger.debug(f"Following link: {href}")
+            logger.debug(f"Following link: {href}")
             yield response.follow(href, self.parse)
 
 
@@ -155,11 +155,11 @@ def gpt_stuff(content: str, role: str = "You are a helpful assistant.") -> dict:
 
 
 if __name__ == "__main__":
-    setup_logger(__name__, logging.INFO)
-
     try:
         load_dotenv()
 
+        # TODO: Add a deterministic ID to prevent duplicates
+        # https://weaviate.io/developers/weaviate/manage-data/create#preventing-duplicates
         website = {
             "class": "Webpage",
             "description": "A webpage from a website specified in the whitelist",
@@ -195,21 +195,20 @@ if __name__ == "__main__":
         )
         process.start()
 
-        question = "Who came to DeLand to perform the voicing of the 2,548 pipes after the Beckerath Organ was assembled in the Elizabeth Hall Chapel?"
-
+        question = "What are the major requirments for csci?"
         response = weaviate.vector_search(
             "Webpage",
             [question],
             ["title", "content", "url"],
         )
 
-        role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions."
-        answer = response["data"]["Get"]["Webpage"][0]["content"]
-        url = response["data"]["Get"]["Webpage"][0]["url"]
-
-        content = f"Question: {question}\nAnswer: {answer} URL: {url}"
-
-        print(gpt_stuff(content, role=role))
+        # role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions."
+        # answer = response["data"]["Get"]["Webpage"][0]["content"]
+        # url = response["data"]["Get"]["Webpage"][0]["url"]
+        #
+        # content = f"Question: {question}\nAnswer: {answer} URL: {url}"
+        #
+        # print(gpt_stuff(content, role=role))
 
     except KeyboardInterrupt:
-        logger.WARNING("Exiting program, have a nice day :)")
+        logger.warning("Exiting program, have a nice day :)")
