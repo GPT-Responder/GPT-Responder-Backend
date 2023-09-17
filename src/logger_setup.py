@@ -8,7 +8,7 @@ DEFAULT_FILE_LOG_FORMAT = (
 )
 
 
-def setup_logger(logger_name="app_logger", log_level=logging.DEBUG, log_file_name=None):
+def setup_logger(logger_name="app_logger", log_level=logging.INFO, log_file_name=None):
     """
     Setup and return a logger with given parameters.
 

@@ -1,19 +1,18 @@
-import requests
-import scrapy
+import html2text
 import logging
+import scrapy
 import openai
 import os
 
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from rich import print
 from logger_setup import setup_logger
 from readability import Document
-from datetime import datetime, timezone
 from weaviate_handler import WeaviateHandler
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 
-logger = setup_logger(logger_name=__name__, log_level=logging.DEBUG)
+logger = setup_logger(logger_name=__name__)
 
 
 class WebpageSpider(scrapy.Spider):
@@ -31,75 +30,49 @@ class WebpageSpider(scrapy.Spider):
         super(WebpageSpider, self).__init__(*args, **kwargs)
         self.start_urls = kwargs.get("start_urls")
         self.allowed_domains = kwargs.get("allowed_domains", [])
+        self.blacklisted_domains = kwargs.get("blacklisted_domains", [])
 
     def parse(self, response):
-        # Logging the URL being processed.
-        logger.info(f"Processing URL: {response.url}")
+        page_title = response.xpath("//title/text()").get()
+        logger.info(f"Getting HTML for URL: {response.url}")
 
         # Extract content from the current page
-        page_contents = parse_html_for_vector_db(response.text)
-        if not page_contents:
+        if response.text is None:
             logger.warning(f"No content found in URL: {response.url}")
-
-        for content in page_contents:
-            print("RESPONSE URL:", response.url)
-            add_webpage(response.url, content)
+        else:
+            add_webpage(page_title, response.url, response.text)
 
         # Follow links to other pages within the allowed domains
         for href in response.css("a::attr(href)").extract():
+            # Check if the URL is blacklisted
+            if any(blacklist in href for blacklist in self.blacklisted_domains):
+                logger.debug(f"Skipping blacklisted link: {href}")
+                continue
+
             logger.debug(f"Following link: {href}")
             yield response.follow(href, self.parse)
 
 
-def parse_html_for_vector_db(html):
-    """
-    Takes in HTML input and returns an array of strings.
-    """
-    soup = BeautifulSoup(html, "html.parser")
-    paragraphs = soup.find_all("p")
-
-    # Extract text from each <p> tag and add it to a list
-    paragraph_data = [p.get_text() for p in paragraphs if p.get_text().strip()]
-    for pos, p in enumerate(paragraph_data):
-        logger.debug(f"Added <p> tag {pos}: {p}")
-
-    if paragraph_data:
-        logger.info(f"Parsed HTML and extracted {len(paragraph_data)} paragraphs.")
-    else:
-        logger.warning(f"No text content found in the provided HTML.")
-
-    # TODO: Add something that parses tables
-
-    return paragraph_data
-
-
-def add_webpage(url, html_content):
+def add_webpage(title, url, html_content):
     """
     Adds the given webpage content (associated with a URL) to the database.
     """
-    logger.info(f"Processing webpage: {url}")
-
     doc = Document(html_content)
-    current_time = datetime.now(timezone.utc)
-    title = doc.title()
+
+    text_converter = html2text.HTML2Text()
+    text_converter.ignore_links = True
+    content = text_converter.handle(doc.summary())
+
     data = []
-
-    if title:
-        logger.info(f"Extracted title: {title}")
-    else:
-        logger.warning(f"Couldn't extract a title for {url}")
-
-    page_contents = parse_html_for_vector_db(doc.summary())
 
     # Putting webpage info in JSON format
     logger.info(f"Formating content for {url}")
-    for content in page_contents:
-        info = {
-            "title": title,
-            "url": url,
-            "content": content,
-        }
-        data.append(info)
+    info = {
+        "title": title,
+        "url": url,
+        "content": content,
+    }
+    data.append(info)
 
     # Batch adding data to Weaviate Database
     logger.info(f"Adding content to Weaviate database for {url}")
@@ -107,10 +80,12 @@ def add_webpage(url, html_content):
 
 
 def gpt_stuff(content: str, role: str = "You are a helpful assistant.") -> dict:
+    logger.info("Authenicating with OpenAI")
     openai.api_key = os.getenv(
         "OPENAI_API_KEY"
     )  # TODO: Move OpenAI authenication somewhere else later
 
+    logger.info("Asking GPT 3.5-turbo")
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
@@ -153,30 +128,43 @@ if __name__ == "__main__":
 
         global weaviate
         weaviate = WeaviateHandler()
-        # weaviate.add_schema(website)
+        weaviate.add_schema(website)
 
-        start_urls = ["https://stetson.edu"]
+        start_urls = ["https://stetson.edu", "https://catalog.stetson.edu/"]
         allowed_urls = ["stetson.edu"]
+        blacklist_urls = ["kaltura.stetson.edu"]
         process = CrawlerProcess(get_project_settings())
         process.crawl(
-            WebpageSpider, start_urls=start_urls, allowed_domains=allowed_urls
+            WebpageSpider,
+            start_urls=start_urls,
+            allowed_domains=allowed_urls,
+            blacklisted_domains=blacklist_urls,
         )
         process.start()
 
-        question = "What are the major requirments for csci?"
-        response = weaviate.vector_search(
-            "Webpage",
-            [question],
-            ["title", "content", "url"],
-        )
+        while True:
+            question = input("Question to ask Weaviate (enter q to quit): ")
+            if question == "q":
+                break
+            response = weaviate.vector_search(
+                "Webpage",
+                [question],
+                ["title", "content", "url"],
+            )
 
-        # role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions."
-        # answer = response["data"]["Get"]["Webpage"][0]["content"]
-        # url = response["data"]["Get"]["Webpage"][0]["url"]
-        #
-        # content = f"Question: {question}\nAnswer: {answer} URL: {url}"
-        #
-        # print(gpt_stuff(content, role=role))
+            role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions."
+            answer = response["data"]["Get"]["Webpage"][0]["content"]
+            url = response["data"]["Get"]["Webpage"][0]["url"]
+
+            content = f"Question: {question}\nAnswer: {answer} URL: {url}"
+            gpt_response = gpt_stuff(content, role=role)["choices"][0]["message"][
+                "content"
+            ]
+
+            print("[blue]Role[/blue]:", role)
+            print("[blue]Question:[/blue]", question)
+            print("[blue]Database Answer:[/blue]", url, "\n", answer)
+            print("[blue]GPT Response:[/blue]", gpt_response)
 
     except KeyboardInterrupt:
         logger.warning("Exiting program, have a nice day :)")

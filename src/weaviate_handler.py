@@ -30,7 +30,6 @@ class WeaviateHandler:
         logger.info("API Keys exist, connecting to database")
 
         auth_config = weaviate.AuthApiKey(api_key=weaviate_api_key)
-
         # self.client = weaviate.Client(url=weaviate_url, auth_client_secret=auth_config)
         self.client = weaviate.Client(url=weaviate_url)
 
@@ -102,7 +101,6 @@ class WeaviateHandler:
         try:
             query = self.client.query.get(class_name, properties)
             result = query.with_near_text(search_params).with_limit(limit).do()
-            print(result)
             logger.info(f"Vector search completed successfully.")
         except Exception as e:
             logger.error(f"Vector search failed with error: {e}")
