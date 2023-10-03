@@ -1,5 +1,4 @@
 import html2text
-import logging
 import scrapy
 import openai
 import os
@@ -79,7 +78,7 @@ def add_webpage(title, url, html_content):
     weaviate.batch_add(data)
 
 
-def gpt_stuff(content: str, role: str = "You are a helpful assistant.") -> dict:
+def gpt_stuff(content, role = "You are a helpful assistant."):
     logger.info("Authenicating with OpenAI")
     openai.api_key = os.getenv(
         "OPENAI_API_KEY"
@@ -128,11 +127,11 @@ if __name__ == "__main__":
 
         global weaviate
         weaviate = WeaviateHandler()
-        weaviate.add_schema(website)
+        # weaviate.add_schema(website)
 
         start_urls = ["https://stetson.edu", "https://catalog.stetson.edu/"]
         allowed_urls = ["stetson.edu"]
-        blacklist_urls = ["kaltura.stetson.edu"]
+        blacklist_urls = ["kaltura.stetson.edu", "stetson.edu/search/"]
         process = CrawlerProcess(get_project_settings())
         process.crawl(
             WebpageSpider,
@@ -140,7 +139,7 @@ if __name__ == "__main__":
             allowed_domains=allowed_urls,
             blacklisted_domains=blacklist_urls,
         )
-        process.start()
+        # process.start()
 
         while True:
             question = input("Question to ask Weaviate (enter q to quit): ")
@@ -152,9 +151,10 @@ if __name__ == "__main__":
                 ["title", "content", "url"],
             )
 
-            role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions."
+            role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions. Do not add an email signature."
             answer = response["data"]["Get"]["Webpage"][0]["content"]
             url = response["data"]["Get"]["Webpage"][0]["url"]
+            title = response["data"]["Get"]["Webpage"][0]["title"]
 
             content = f"Question: {question}\nAnswer: {answer} URL: {url}"
             gpt_response = gpt_stuff(content, role=role)["choices"][0]["message"][
@@ -163,7 +163,13 @@ if __name__ == "__main__":
 
             print("[blue]Role[/blue]:", role)
             print("[blue]Question:[/blue]", question)
-            print("[blue]Database Answer:[/blue]", url, "\n", answer)
+            print(
+                "[blue]Database Answer:[/blue]",
+                f"[green]{title}[/green] -",
+                url,
+                "\n",
+                answer,
+            )
             print("[blue]GPT Response:[/blue]", gpt_response)
 
     except KeyboardInterrupt:
