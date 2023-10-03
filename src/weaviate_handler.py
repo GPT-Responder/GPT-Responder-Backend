@@ -51,6 +51,7 @@ class WeaviateHandler:
                     "title": d["title"],
                     "url": d["url"],
                     "content": d["content"],
+                    "mostCommonQuestions": d["mostCommonQuestions"],
                 }
                 self.client.batch.add_data_object(properties, "Webpage")
         logger.debug("Content added to Weaviate database")
