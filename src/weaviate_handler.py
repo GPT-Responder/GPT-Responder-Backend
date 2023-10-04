@@ -62,6 +62,7 @@ class WeaviateHandler:
         concepts,
         properties,
         limit=1,
+        hybrid=None,
         move_to=None,
         move_away_from=None,
         force=0.5,
@@ -99,8 +100,12 @@ class WeaviateHandler:
             search_params["moveAwayFrom"] = {"values": move_away_from, "force": force}
 
         # Perform the search
+        # TODO: Figure out why hybrid search is not working 
         try:
-            query = self.client.query.get(class_name, properties)
+            if hybrid is None:
+                query = self.client.query.get(class_name, properties)
+            else:
+                query = self.client.query.get(class_name, properties).with_hybrid(hybrid)
             result = query.with_near_text(search_params).with_limit(limit).do()
             logger.info(f"Vector search completed successfully.")
         except Exception as e:

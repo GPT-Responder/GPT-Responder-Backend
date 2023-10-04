@@ -152,7 +152,7 @@ if __name__ == "__main__":
             allowed_domains=allowed_urls,
             blacklisted_domains=blacklist_urls,
         )
-        process.start()
+        # process.start()
 
         while True:
             question = input("Question to ask Weaviate (enter q to quit): ")
@@ -162,6 +162,9 @@ if __name__ == "__main__":
                 "Webpage",
                 [question],
                 ["title", "content", "url"],
+                # hybrid={
+                #     'properties': ["mostCommonQuestions^2", "content"],
+                # },
             )
 
             role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions. Do not add an email signature."
@@ -169,10 +172,10 @@ if __name__ == "__main__":
             url = response["data"]["Get"]["Webpage"][0]["url"]
             title = response["data"]["Get"]["Webpage"][0]["title"]
 
+            chatgpt = ChatGPT()
+
             content = f"Question: {question}\nAnswer: {answer} URL: {url}"
-            gpt_response = gpt_stuff(content, role=role)["choices"][0]["message"][
-                "content"
-            ]
+            gpt_response = chatgpt.prompt(content, role=role)["choices"][0]["message"]["content"]
 
             print("[blue]Role[/blue]:", role)
             print("[blue]Question:[/blue]", question)
