@@ -62,7 +62,7 @@ class WeaviateHandler:
         concepts,
         properties,
         limit=1,
-        hybrid=None,
+        hybrid_properties=None,
         move_to=None,
         move_away_from=None,
         force=0.5,
@@ -72,7 +72,7 @@ class WeaviateHandler:
 
         Parameters:
         - class_name: The name of the class to search.
-        - concepts: A list of concepts to search for.
+        - concepts: A string to search for.
         - properties: A list of properties to return in the search results.
         - limit: The maximum number of results to return.
         - move_to: An optional list of concepts to move towards in the search.
@@ -102,11 +102,12 @@ class WeaviateHandler:
         # Perform the search
         # TODO: Figure out why hybrid search is not working 
         try:
-            if hybrid is None:
+            if hybrid_properties is None:
                 query = self.client.query.get(class_name, properties)
+                result = query.with_near_text(search_params).with_limit(limit).do()
             else:
-                query = self.client.query.get(class_name, properties).with_hybrid(hybrid)
-            result = query.with_near_text(search_params).with_limit(limit).do()
+                query = self.client.query.get(class_name, properties).with_hybrid(query=concepts, properties=hybrid_properties)
+                result = query.with_near_text(search_params).with_limit(limit).do()
             logger.info(f"Vector search completed successfully.")
         except Exception as e:
             logger.error(f"Vector search failed with error: {e}")

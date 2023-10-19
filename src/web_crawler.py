@@ -60,14 +60,16 @@ def add_webpage(title, url, html_content):
     doc = Document(html_content)
 
     text_converter = html2text.HTML2Text()
-    text_converter.ignore_links = True
+    # text_converter.ignore_links = True
+    text_converter.ignore_images = True
+    text_converter.body_width = 0
     content = text_converter.handle(doc.summary())
 
     data = []
 
     chatgpt = ChatGPT()
-    role = 'As a Website Content Analyst - FAQ Specialist, you will be responsible for analyzing client websites to identify the most common questions that visitors may have.'
-    prompt = 'Come with the the 10 most common questions for this webpage:\n' + content
+    role = 'I want you to act as a Website Content Analyst - FAQ Specialist, analyze the client webpage below to identify 10 common questions from visitors. List each question on a new line without numbering or bullet-pointing.'
+    prompt = '' + content
     token_count = chatgpt.string_to_tokens(prompt)
 
     # TODO: Figure out what to do if the prompt is too long 
@@ -77,8 +79,13 @@ def add_webpage(title, url, html_content):
     else:
         gpt_response = chatgpt.prompt(prompt, role)
         most_common_questions = gpt_response['choices'][0]['message']['content']
+        most_common_questions = most_common_questions.split('\n')
         logger.debug(f'GPT Response: {gpt_response}')
 
+
+    # TODO: If chatgpt returns a response like "Sorry, I don't have enough information" then most_common_questions should be None
+
+    # TODO: Make this level debug later
     logger.info(f"Most common questions for {url}:\n{most_common_questions}")
 
     # Putting webpage info in JSON format
@@ -133,7 +140,7 @@ if __name__ == "__main__":
                 {
                     "name": "mostCommonQuestions",
                     "description": "The most common questions asked about the webpage",
-                    "dataType": ["text"],
+                    "dataType": ["text[]"],
                 },
             ],
         }
@@ -144,7 +151,7 @@ if __name__ == "__main__":
 
         start_urls = ["https://stetson.edu", "https://catalog.stetson.edu/"]
         allowed_urls = ["stetson.edu"]
-        blacklist_urls = ["kaltura.stetson.edu", "stetson.edu/search/"]
+        blacklist_urls = ["kaltura.stetson.edu", "stetson.edu/search", "stetson.edu/law", "cas.stetson.edu"]
         process = CrawlerProcess(get_project_settings())
         process.crawl(
             WebpageSpider,
@@ -160,12 +167,13 @@ if __name__ == "__main__":
                 break
             response = weaviate.vector_search(
                 "Webpage",
-                [question],
+                question,
                 ["title", "content", "url"],
-                # hybrid={
-                #     'properties': ["mostCommonQuestions^2", "content"],
-                # },
+                hybrid_properties=["mostCommonQuestions^3", "content", 'title^5'],
             )
+
+
+            print(response)
 
             role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions. Do not add an email signature."
             answer = response["data"]["Get"]["Webpage"][0]["content"]
@@ -183,8 +191,8 @@ if __name__ == "__main__":
                 "[blue]Database Answer:[/blue]",
                 f"[green]{title}[/green] -",
                 url,
-                "\n",
-                answer,
+                # "\n",
+                # answer,
             )
             print("[blue]GPT Response:[/blue]", gpt_response)
 
