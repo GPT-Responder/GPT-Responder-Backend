@@ -44,9 +44,12 @@ class WebpageSpider(scrapy.Spider):
 
         # Follow links to other pages within the allowed domains
         for href in response.css("a::attr(href)").extract():
+            # Convert relative URLs to absolute URLs
+            absolute_url = response.urljoin(href)
+
             # Check if the URL is blacklisted
-            if any(blacklist in href for blacklist in self.blacklisted_domains):
-                logger.debug(f"Skipping blacklisted link: {href}")
+            if any(blacklist.lower() in absolute_url.lower() for blacklist in self.blacklisted_domains):
+                logger.info(f"Skipping blacklisted link: {absolute_url}")
                 continue
 
             logger.debug(f"Following link: {href}")
@@ -151,15 +154,18 @@ if __name__ == "__main__":
 
         start_urls = ["https://stetson.edu", "https://catalog.stetson.edu/"]
         allowed_urls = ["stetson.edu"]
-        blacklist_urls = ["kaltura.stetson.edu", "stetson.edu/search", "stetson.edu/law", "cas.stetson.edu"]
+        with open('config/url_blocklist.txt') as f:
+            blocklist_urls = f.readlines()
+
+        blocklist_urls = [x.strip() for x in blocklist_urls] 
         process = CrawlerProcess(get_project_settings())
         process.crawl(
             WebpageSpider,
             start_urls=start_urls,
             allowed_domains=allowed_urls,
-            blacklisted_domains=blacklist_urls,
+            blacklisted_domains=blocklist_urls,
         )
-        # process.start()
+        process.start()
 
         while True:
             question = input("Question to ask Weaviate (enter q to quit): ")
