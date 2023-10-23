@@ -2,9 +2,11 @@ import weaviate
 import logging
 import os
 
+from dotenv import load_dotenv
 from logger_setup import setup_logger
 
 logger = setup_logger(__name__)
+load_dotenv()
 
 
 class WeaviateHandler:
@@ -128,3 +130,4 @@ class WeaviateHandler:
             return query.with_after(cursor).do()
         else:
             return query.do()
+

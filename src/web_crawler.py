@@ -166,7 +166,7 @@ if __name__ == "__main__":
             allowed_domains=allowed_urls,
             blacklisted_domains=blocklist_urls,
         )
-        # process.start()
+        process.start()
 
         while True:
             question = input("Question to ask Weaviate (enter q to quit): ")
