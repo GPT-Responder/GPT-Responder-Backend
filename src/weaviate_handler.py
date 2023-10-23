@@ -83,7 +83,7 @@ class WeaviateHandler:
         """
 
         logger.info(
-            f"Performing vector search on class {class_name} for concepts {concepts}..."
+            f'Performing vector search on class {class_name} for concepts "{concepts}"'
         )
 
         # Define the search parameters

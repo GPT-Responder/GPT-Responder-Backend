@@ -27,6 +27,7 @@ class ChatGPT:
                 {"role": "system", "content": role},
                 {"role": "user", "content": content},
             ],
+            temperature=0.1,
         )
 
         return response

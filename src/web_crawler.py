@@ -79,6 +79,7 @@ def add_webpage(title, url, html_content):
     if token_count > 4096:
         logger.warning(f"Prompt is too long ({token_count} tokens), skipping")
         most_common_questions = None
+        # TODO: use the 16k model in these cases
     else:
         gpt_response = chatgpt.prompt(prompt, role)
         most_common_questions = gpt_response['choices'][0]['message']['content']
@@ -89,7 +90,7 @@ def add_webpage(title, url, html_content):
     # TODO: If chatgpt returns a response like "Sorry, I don't have enough information" then most_common_questions should be None
 
     # TODO: Make this level debug later
-    logger.info(f"Most common questions for {url}:\n{most_common_questions}")
+    logger.debug(f"Most common questions for {url}:\n{most_common_questions}")
 
     # Putting webpage info in JSON format
     logger.info(f"Formating content for {url}")
@@ -165,7 +166,7 @@ if __name__ == "__main__":
             allowed_domains=allowed_urls,
             blacklisted_domains=blocklist_urls,
         )
-        process.start()
+        # process.start()
 
         while True:
             question = input("Question to ask Weaviate (enter q to quit): ")
@@ -181,14 +182,14 @@ if __name__ == "__main__":
 
             print(response)
 
-            role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions. Do not add an email signature."
-            answer = response["data"]["Get"]["Webpage"][0]["content"]
+            role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions. Do not add an email signature. Make sure to always include the webpage link."
+            context = response["data"]["Get"]["Webpage"][0]["content"]
             url = response["data"]["Get"]["Webpage"][0]["url"]
             title = response["data"]["Get"]["Webpage"][0]["title"]
 
             chatgpt = ChatGPT()
 
-            content = f"Question: {question}\nAnswer: {answer} URL: {url}"
+            content = f"Question: {question}\nContext: {context} URL: {url}"
             gpt_response = chatgpt.prompt(content, role=role)["choices"][0]["message"]["content"]
 
             print("[blue]Role[/blue]:", role)
