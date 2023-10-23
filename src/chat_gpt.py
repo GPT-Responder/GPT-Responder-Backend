@@ -7,7 +7,7 @@ from tenacity import (
     wait_random_exponential,
 )
 
-logger = setup_logger(logger_name=__name__)
+logger = setup_logger()
 
 # TODO: Put in a Try/Catch block that checks for rate limiting 
 # TODO: Put is a Try/Catch block that checks for API key

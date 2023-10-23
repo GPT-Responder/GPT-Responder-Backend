@@ -11,7 +11,7 @@ from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from weaviate_handler import WeaviateHandler
 
-logger = setup_logger(logger_name=__name__)
+logger = setup_logger()
 
 
 class WebpageSpider(scrapy.Spider):
