@@ -3,6 +3,8 @@ version: '3.4'
 services:
   weaviate:
     image: semitechnologies/weaviate:1.20.1
+    volumes:
+      - weaviate-data:/var/lib/weaviate
     command:
     - --host
     - 0.0.0.0
@@ -31,37 +33,6 @@ services:
       # # Setting up user autherization
       # AUTHORIZATION_ADMINLIST_ENABLED: 'true'
       # AUTHORIZATION_ADMINLIST_USERS: '${WEAVIATE_EMAIL}'
-  # t2v-transformers:
-  #   image: semitechnologies/transformers-inference:sentence-transformers-multi-qa-MiniLM-L6-cos-v1
-  #   environment:
-  #     ENABLE_CUDA: '1'
-  #     NVIDIA_VISIBLE_DEVICES: 'all'
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #         - capabilities: 
-  #           - 'gpu'
-  # qna-transformers:
-  #   image: semitechnologies/qna-transformers:distilbert-base-uncased-distilled-squad
-  #   environment:
-  #     ENABLE_CUDA: '1'
-  #     NVIDIA_VISIBLE_DEVICES: 'all'
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #         - capabilities: 
-  #           - 'gpu'
-  # ner-transformers:
-  #   image: semitechnologies/ner-transformers:dbmdz-bert-large-cased-finetuned-conll03-english
-  #   environment:
-  #     ENABLE_CUDA: '1'
-  #     NVIDIA_VISIBLE_DEVICES: 'all'
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #         - capabilities: 
-  #           - 'gpu'
+volumes:
+  weaviate-data:
 ...
