@@ -18,7 +18,6 @@ class WebpageSpider(scrapy.Spider):
     name = "webpage_spider"
 
     custom_settings = {
-        "LOG_ENABLED": False,
         "LOG_LEVEL": "WARNING",
         "AUTOTHROTTLE_ENABLED": True,
         "AUTOTHROTTLE_START_DELAY": 5,
@@ -40,8 +39,8 @@ class WebpageSpider(scrapy.Spider):
         if response.text is None:
             logger.warning(f"No content found in URL: {response.url}")
         else:
-            # threading.Thread(target=add_webpage, args=(page_title, response.url, response.text)).start()
-            add_webpage(page_title, response.url, response.text)
+            threading.Thread(target=add_webpage, args=(page_title, response.url, response.text)).start()
+            # add_webpage(page_title, response.url, response.text)
 
         # Follow links to other pages within the allowed domains
         for href in response.css("a::attr(href)").extract():
@@ -57,7 +56,7 @@ class WebpageSpider(scrapy.Spider):
             yield response.follow(href, self.parse)
 
 
-def add_webpage(title, url, html_content, token_skip=40):
+def add_webpage(title, url, html_content, token_skip=50):
     """
     Adds the given webpage content (associated with a URL) to the database.
     """
@@ -169,41 +168,41 @@ if __name__ == "__main__":
         )
         process.start()
 
-        while True:
-            question = input("Question to ask Weaviate (enter q to quit): ")
-            if question == "q":
-                break
-            response = weaviate.vector_search(
-                "Webpage",
-                question,
-                ["title", "content", "url"],
-                hybrid_properties=["mostCommonQuestions^3", "content", 'title^5'],
-            )
-
-
-            print(response)
-
-            role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions. Do not add an email signature. Make sure to always include the webpage link."
-            webpage_data = response["data"]["Get"]["Webpage"][0]
-            context = webpage_data["content"]
-            url = webpage_data["url"]
-            title = webpage_data["title"]
-
-            chatgpt = ChatGPT()
-
-            content = f"Question: {question}\nContext: {context} URL: {url}"
-            gpt_response = chatgpt.prompt(content, role=role)["choices"][0]["message"]["content"]
-
-            print("[blue]Role[/blue]:", role)
-            print("[blue]Question:[/blue]", question)
-            print(
-                "[blue]Database Answer:[/blue]",
-                f"[green]{title}[/green] -",
-                url,
-                # "\n",
-                # answer,
-            )
-            print("[blue]GPT Response:[/blue]", gpt_response)
+        # while True:
+        #     question = input("Question to ask Weaviate (enter q to quit): ")
+        #     if question == "q":
+        #         break
+        #     response = weaviate.vector_search(
+        #         "Webpage",
+        #         question,
+        #         ["title", "content", "url"],
+        #         hybrid_properties=["mostCommonQuestions^3", "content", 'title^5'],
+        #     )
+        #
+        #
+        #     print(response)
+        #
+        #     role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions. Do not add an email signature. Make sure to always include the webpage link."
+        #     webpage_data = response["data"]["Get"]["Webpage"][0]
+        #     context = webpage_data["content"]
+        #     url = webpage_data["url"]
+        #     title = webpage_data["title"]
+        #
+        #     chatgpt = ChatGPT()
+        #
+        #     content = f"Question: {question}\nContext: {context} URL: {url}"
+        #     gpt_response = chatgpt.prompt(content, role=role)["choices"][0]["message"]["content"]
+        #
+        #     print("[blue]Role[/blue]:", role)
+        #     print("[blue]Question:[/blue]", question)
+        #     print(
+        #         "[blue]Database Answer:[/blue]",
+        #         f"[green]{title}[/green] -",
+        #         url,
+        #         # "\n",
+        #         # answer,
+        #     )
+        #     print("[blue]GPT Response:[/blue]", gpt_response)
 
     except KeyboardInterrupt:
         logger.warning("Exiting program, have a nice day :)")

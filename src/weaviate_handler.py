@@ -40,8 +40,13 @@ class WeaviateHandler:
 
     # TODO: rewrite this to create new classes
     def add_schema(self, schema):
-        # TODO: figure out how to check if the class is already made
-        self.client.schema.create_class(schema)
+        class_name = schema["class"]
+        if self.client.schema.exists(class_name):
+            # TODO: Create an update definition here
+            pass
+        else:
+            self.client.schema.create_class(schema)
+
 
     def add(self, item, uuid_field=None):
         # Generate UUID
