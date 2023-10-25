@@ -74,7 +74,6 @@ def add_webpage(title, url, html_content, token_skip=40):
         logger.warning(f"Skipping {url} because it has less than {token_skip} tokens")
         return
 
-    data = []
     role = 'I want you to act as a Website Content Analyst - FAQ Specialist, analyze the client webpage below to identify 10 common questions from visitors. List each question on a new line without numbering or bullet-pointing.'
     prompt = '' + content
     token_count = chatgpt.string_to_tokens(prompt)
@@ -97,17 +96,16 @@ def add_webpage(title, url, html_content, token_skip=40):
 
     # Putting webpage info in JSON format
     logger.info(f"Formating content for {url}")
-    info = {
+    data = {
         "title": title,
         "url": url,
         "content": content,
         "mostCommonQuestions": most_common_questions,
     }
-    data.append(info)
 
     # Batch adding data to Weaviate Database
     logger.info(f"Adding content to Weaviate database for {url}")
-    weaviate.batch_add(data)
+    weaviate.add(data, url)
 
 
 if __name__ == "__main__":

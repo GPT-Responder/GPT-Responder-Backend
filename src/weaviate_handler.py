@@ -32,41 +32,32 @@ class WeaviateHandler:
 
         logger.info("API Keys exist, connecting to database")
 
-        # auth_config = weaviate.AuthApiKey(api_key=weaviate_api_key)
+        auth_config = weaviate.AuthApiKey(api_key=weaviate_api_key)
         # self.client = weaviate.Client(url=weaviate_url, auth_client_secret=auth_config)
         self.client = weaviate.Client(url=weaviate_url)
 
         logger.info("Connected to Weaviate database")
 
     # TODO: rewrite this to create new classes
-    def add_schema(self, schema, unique_field=None):
-        # Generate a deterministic UUID based on the unique_field
-        schema_id = generate_uuid5(schema[unique_field])
+    def add_schema(self, schema):
+        # TODO: figure out how to check if the class is already made
+        self.client.schema.create_class(schema)
 
-        # Check if the schema with the same unique_field already exists
-        existing_schema = self.client.data_object.get_by_id(schema_id)
-
-        if existing_schema:
-            # TODO: Update the existing schema
-            pass
+    def add(self, item, uuid_field=None):
+        # Generate UUID
+        if uuid_field:
+            uuid_value = generate_uuid5(uuid_field)
         else:
-            schema['id'] = schema_id
-            self.client.schema.create_class(schema)
+            uuid_value = generate_uuid5(item)
 
-    def batch_add(self, data, batch_size=100):
-        with self.client.batch as batch:
-            batch.batch_size = batch_size
-
-            for i, d in enumerate(data):
-                logger.debug(f"Adding the following to Weaviate database:\n{d}")
-                properties = {
-                    "title": d["title"],
-                    "url": d["url"],
-                    "content": d["content"],
-                    "mostCommonQuestions": d["mostCommonQuestions"],
-                }
-                self.client.batch.add_data_object(properties, "Webpage")
-        logger.debug("Content added to Weaviate database")
+        # Create data object in Weaviate
+        uuid = self.client.data_object.create(
+            data_object=item,
+            class_name="Webpage",
+            uuid=uuid_value
+        )
+        
+        logger.debug(f"Added the following to Weaviate database with UUID {uuid}:\n{item}")
 
     def vector_search(
         self,
