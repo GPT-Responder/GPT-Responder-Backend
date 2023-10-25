@@ -19,6 +19,7 @@ class WebpageSpider(scrapy.Spider):
 
     custom_settings = {
         "LOG_ENABLED": False,
+        "LOG_LEVEL": "WARNING",
         "AUTOTHROTTLE_ENABLED": True,
         "AUTOTHROTTLE_START_DELAY": 5,
         "AUTOTHROTTLE_MAX_DELAY": 60,
@@ -39,8 +40,8 @@ class WebpageSpider(scrapy.Spider):
         if response.text is None:
             logger.warning(f"No content found in URL: {response.url}")
         else:
-            threading.Thread(target=add_webpage, args=(page_title, response.url, response.text)).start()
-            # add_webpage(page_title, response.url, response.text)
+            # threading.Thread(target=add_webpage, args=(page_title, response.url, response.text)).start()
+            add_webpage(page_title, response.url, response.text)
 
         # Follow links to other pages within the allowed domains
         for href in response.css("a::attr(href)").extract():
@@ -56,35 +57,37 @@ class WebpageSpider(scrapy.Spider):
             yield response.follow(href, self.parse)
 
 
-def add_webpage(title, url, html_content):
+def add_webpage(title, url, html_content, token_skip=40):
     """
     Adds the given webpage content (associated with a URL) to the database.
     """
     doc = Document(html_content)
 
     text_converter = html2text.HTML2Text()
-    # text_converter.ignore_links = True
     text_converter.ignore_images = True
     text_converter.body_width = 0
     content = text_converter.handle(doc.summary())
 
-    data = []
-
     chatgpt = ChatGPT()
+    content_tokens = chatgpt.string_to_tokens(content)
+    if content_tokens < token_skip:
+        logger.warning(f"Skipping {url} because it has less than {token_skip} tokens")
+        return
+
+    data = []
     role = 'I want you to act as a Website Content Analyst - FAQ Specialist, analyze the client webpage below to identify 10 common questions from visitors. List each question on a new line without numbering or bullet-pointing.'
     prompt = '' + content
     token_count = chatgpt.string_to_tokens(prompt)
 
-    # TODO: Figure out what to do if the prompt is too long 
     if token_count > 4096:
-        logger.warning(f"Prompt is too long ({token_count} tokens), skipping")
-        most_common_questions = None
-        # TODO: use the 16k model in these cases
+        logger.warning(f"Prompt is too long ({token_count} tokens), using 16k model instead")
+        gpt_response = chatgpt.prompt(prompt, role, model="gpt-3.5-turbo-16k")
     else:
         gpt_response = chatgpt.prompt(prompt, role)
-        most_common_questions = gpt_response['choices'][0]['message']['content']
-        most_common_questions = most_common_questions.split('\n')
-        logger.debug(f'GPT Response: {gpt_response}')
+
+    most_common_questions = gpt_response['choices'][0]['message']['content']
+    most_common_questions = most_common_questions.split('\n')
+    logger.debug(f'GPT Response: {gpt_response}')
 
 
     # TODO: If chatgpt returns a response like "Sorry, I don't have enough information" then most_common_questions should be None
@@ -151,7 +154,7 @@ if __name__ == "__main__":
 
         global weaviate
         weaviate = WeaviateHandler()
-        # weaviate.add_schema(website)
+        weaviate.add_schema(website)
 
         start_urls = ["https://stetson.edu", "https://catalog.stetson.edu/"]
         allowed_urls = ["stetson.edu"]
@@ -183,9 +186,10 @@ if __name__ == "__main__":
             print(response)
 
             role = "You are an admissions officer at Stetson univerisity. Using only the context provided, you will answer emailed questions. Do not add an email signature. Make sure to always include the webpage link."
-            context = response["data"]["Get"]["Webpage"][0]["content"]
-            url = response["data"]["Get"]["Webpage"][0]["url"]
-            title = response["data"]["Get"]["Webpage"][0]["title"]
+            webpage_data = response["data"]["Get"]["Webpage"][0]
+            context = webpage_data["content"]
+            url = webpage_data["url"]
+            title = webpage_data["title"]
 
             chatgpt = ChatGPT()
 
