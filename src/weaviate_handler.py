@@ -4,6 +4,7 @@ import os
 
 from dotenv import load_dotenv
 from logger_setup import setup_logger
+from weaviate.util import generate_uuid5
 
 logger = setup_logger()
 load_dotenv()
@@ -31,17 +32,26 @@ class WeaviateHandler:
 
         logger.info("API Keys exist, connecting to database")
 
-        auth_config = weaviate.AuthApiKey(api_key=weaviate_api_key)
+        # auth_config = weaviate.AuthApiKey(api_key=weaviate_api_key)
         # self.client = weaviate.Client(url=weaviate_url, auth_client_secret=auth_config)
         self.client = weaviate.Client(url=weaviate_url)
 
         logger.info("Connected to Weaviate database")
 
     # TODO: rewrite this to create new classes
-    def add_schema(self, schema):
-        # TODO: figure out how to check if the class is already made
+    def add_schema(self, schema, unique_field=None):
+        # Generate a deterministic UUID based on the unique_field
+        schema_id = generate_uuid5(schema[unique_field])
 
-        self.client.schema.create_class(schema)
+        # Check if the schema with the same unique_field already exists
+        existing_schema = self.client.data_object.get_by_id(schema_id)
+
+        if existing_schema:
+            # TODO: Update the existing schema
+            pass
+        else:
+            schema['id'] = schema_id
+            self.client.schema.create_class(schema)
 
     def batch_add(self, data, batch_size=100):
         with self.client.batch as batch:
