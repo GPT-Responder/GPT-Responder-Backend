@@ -11,13 +11,14 @@ from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from weaviate_handler import WeaviateHandler
 
-logger = setup_logger()
+logger = setup_logger(__name__)
 
 
 class WebpageSpider(scrapy.Spider):
     name = "webpage_spider"
 
     custom_settings = {
+        "LOG_ENABLED": False,
         "LOG_LEVEL": "WARNING",
         "AUTOTHROTTLE_ENABLED": True,
         "AUTOTHROTTLE_START_DELAY": 5,

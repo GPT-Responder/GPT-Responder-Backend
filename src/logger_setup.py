@@ -8,7 +8,7 @@ DEFAULT_FILE_LOG_FORMAT = (
 )
 
 
-def setup_logger(log_level=logging.INFO, log_file_name=None):
+def setup_logger(log_name=None, log_level=logging.INFO, log_file_name=None):
     """
     Setup and return a logger with given parameters.
 
@@ -24,7 +24,7 @@ def setup_logger(log_level=logging.INFO, log_file_name=None):
     if log_file_name and not os.path.exists(LOG_DIR):
         os.makedirs(LOG_DIR)
 
-    logger = logging.getLogger()
+    logger = logging.getLogger(log_name)
     logger.setLevel(log_level)
     logger.propagate = False
 
