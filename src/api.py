@@ -1,6 +1,7 @@
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from weaviate_handler import WeaviateHandler
 from chat_gpt import ChatGPT
 from logger_setup import setup_logger
@@ -21,7 +22,7 @@ async def root():
     return {"message": "Hello World!"}
 
 @app.get("/question/{question}")
-async def question(question: str):
+async def question(question):
     weaviate = WeaviateHandler()
 
     response = weaviate.vector_search(
@@ -37,20 +38,21 @@ async def question(question: str):
 
     chatgpt = ChatGPT()
 
-    prompt = f"Question: {question}\nContext: {context} URL: {url}"
-    token_count = chatgpt.string_to_tokens(prompt)
-    
-    if token_count > 4096:
-        logger.warning(f"Prompt is too long ({token_count} tokens), using 16k model instead")
-        gpt_response = chatgpt.prompt(prompt, role, model="gpt-3.5-turbo-16k")
-    else:
-        gpt_response = chatgpt.prompt(prompt, role)
+    prompt_content = f"Question: {question}\nContext: {context} URL: {url}"
+    token_count = chatgpt.string_to_tokens(prompt_content)
 
-    gpt_response = gpt_response["choices"][0]["message"]["content"]
-    
-    return { "response": gpt_response }
+    def chat_stream():
+        model_name = "gpt-3.5-turbo-16k" if token_count > 4000 else "gpt-4"
+        logger.info(f"Using model: {model_name}")
+        
+        for message in chatgpt.prompt(prompt_content, role, model=model_name):
+            if message['choices'][0]['finish_reason'] is not None:
+                break
+            yield message['choices'][0]['delta']['content']  # adding a new line as a message delimiter
+
+    return StreamingResponse(chat_stream(), media_type="text/plain")
 
 if __name__ == "__main__":
-    config = uvicorn.Config("api:app", port=5000, log_level="info", log_config=None, use_colors=False)
+    config = uvicorn.Config("api:app", host="0.0.0.0", port=5000, log_level="info", log_config=None, use_colors=False)
     server = uvicorn.Server(config)
     server.run()
